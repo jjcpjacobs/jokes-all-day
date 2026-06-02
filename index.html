@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Moppen van de Dag</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #fdf6ec;
+      color: #2d2d2d;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      color: #e07b00;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      color: #888;
+      margin-top: 0.4rem;
+      font-size: 0.95rem;
+    }
+
+    #last-updated {
+      display: inline-block;
+      margin-top: 0.6rem;
+      font-size: 0.8rem;
+      background: #ffe0a0;
+      padding: 2px 10px;
+      border-radius: 99px;
+      color: #a05000;
+    }
+
+    #joke-list {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .joke-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.4rem 1.6rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      border-left: 4px solid #e07b00;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .joke-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    }
+
+    .joke-number {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #e07b00;
+      margin-bottom: 0.5rem;
+    }
+
+    .joke-text {
+      font-size: 1.05rem;
+      line-height: 1.65;
+      white-space: pre-line;
+    }
+
+    .joke-text strong {
+      color: #e07b00;
+    }
+
+    #empty-state {
+      text-align: center;
+      color: #aaa;
+      font-size: 1.1rem;
+      padding: 4rem 0;
+      display: none;
+    }
+
+    #loading {
+      text-align: center;
+      color: #aaa;
+      font-size: 1rem;
+      padding: 4rem 0;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #e07b00;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎭 Moppen van de Dag</h1>
+    <p>Elke minuut een nieuwe Nederlandse mop</p>
+    <span id="last-updated">laden...</span>
+  </header>
+
+  <div id="loading"><span class="spinner"></span> Moppen ophalen…</div>
+  <div id="empty-state">Nog geen moppen — kom zo terug! 😄</div>
+  <div id="joke-list"></div>
+
+  <script>
+    const JOKES_URL = 'jokes.md';
+    const REFRESH_MS = 30_000;
+
+    function parseJokes(md) {
+      // Split on the --- separator that follows the header block
+      const parts = md.split(/^---$/m);
+      // Everything after the first --- is jokes content
+      const jokesSection = parts.slice(1).join('---');
+
+      // Each joke is separated by a blank line after the number heading
+      // Format expected:
+      //   ## Mop #N — <timestamp>
+      //   <text>
+      const jokes = [];
+      const blocks = jokesSection.split(/\n(?=## )/);
+
+      for (const block of blocks) {
+        const trimmed = block.trim();
+        if (!trimmed) continue;
+        const lines = trimmed.split('\n');
+        const heading = lines[0].replace(/^##\s*/, '').trim();
+        const body = lines.slice(1).join('\n').trim();
+        if (body) jokes.push({ heading, body });
+      }
+
+      return jokes.reverse(); // newest first
+    }
+
+    function renderJokes(jokes) {
+      const list = document.getElementById('joke-list');
+      const empty = document.getElementById('empty-state');
+      list.innerHTML = '';
+
+      if (jokes.length === 0) {
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+
+      jokes.forEach((joke, i) => {
+        const card = document.createElement('a');
+        card.className = 'joke-card';
+        card.id = `joke-${jokes.length - i}`;
+        card.href = `#joke-${jokes.length - i}`;
+
+        const num = document.createElement('div');
+        num.className = 'joke-number';
+        num.textContent = joke.heading;
+
+        const text = document.createElement('div');
+        text.className = 'joke-text';
+        // Bold the punchline (last non-empty line)
+        const lines = joke.body.split('\n').filter(l => l.trim());
+        if (lines.length > 1) {
+          const setup = lines.slice(0, -1).join('\n');
+          const punchline = lines[lines.length - 1];
+          text.innerHTML = escapeHtml(setup) + '\n<strong>' + escapeHtml(punchline) + '</strong>';
+        } else {
+          text.textContent = joke.body;
+        }
+
+        card.appendChild(num);
+        card.appendChild(text);
+        list.appendChild(card);
+      });
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    async function fetchAndRender() {
+      try {
+        const res = await fetch(JOKES_URL + '?t=' + Date.now());
+        if (!res.ok) throw new Error(res.status);
+        const md = await res.text();
+        const jokes = parseJokes(md);
+        document.getElementById('loading').style.display = 'none';
+        renderJokes(jokes);
+        document.getElementById('last-updated').textContent =
+          'bijgewerkt om ' + new Date().toLocaleTimeString('nl-NL');
+      } catch (e) {
+        document.getElementById('loading').textContent = 'Kon moppen niet laden. Probeer opnieuw.';
+      }
+    }
+
+    fetchAndRender();
+    setInterval(fetchAndRender, REFRESH_MS);
+  </script>
+</body>
+</html>
