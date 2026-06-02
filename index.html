@@ -129,32 +129,14 @@
   <div id="joke-list"></div>
 
   <script>
-    const JOKES_URL = 'jokes.md';
+    const MANIFEST_URL = 'jokes/manifest.json';
     const REFRESH_MS = 30_000;
 
-    function parseJokes(md) {
-      // Split on the --- separator that follows the header block
-      const parts = md.split(/^---$/m);
-      // Everything after the first --- is jokes content
-      const jokesSection = parts.slice(1).join('---');
-
-      // Each joke is separated by a blank line after the number heading
-      // Format expected:
-      //   ## Mop #N — <timestamp>
-      //   <text>
-      const jokes = [];
-      const blocks = jokesSection.split(/\n(?=## )/);
-
-      for (const block of blocks) {
-        const trimmed = block.trim();
-        if (!trimmed) continue;
-        const lines = trimmed.split('\n');
-        const heading = lines[0].replace(/^##\s*/, '').trim();
-        const body = lines.slice(1).join('\n').trim();
-        if (body) jokes.push({ heading, body });
-      }
-
-      return jokes.reverse(); // newest first
+    function parseJokeMd(md, file) {
+      const lines = md.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      const heading = lines[0].replace(/^#+ /, '');
+      const body = lines.slice(1).join('\n').trim();
+      return { heading, body, file };
     }
 
     function renderJokes(jokes) {
@@ -168,12 +150,10 @@
       }
       empty.style.display = 'none';
 
-      jokes.forEach((joke, i) => {
-        const n = jokes.length - i;
+      jokes.forEach((joke) => {
         const card = document.createElement('a');
         card.className = 'joke-card';
-        card.id = `joke-${n}`;
-        card.href = `joke.html?file=jokes/mop-${n}.md`;
+        card.href = `joke.html?file=${joke.file}`;
 
         const num = document.createElement('div');
         num.className = 'joke-number';
@@ -181,7 +161,6 @@
 
         const text = document.createElement('div');
         text.className = 'joke-text';
-        // Bold the punchline (last non-empty line)
         const lines = joke.body.split('\n').filter(l => l.trim());
         if (lines.length > 1) {
           const setup = lines.slice(0, -1).join('\n');
@@ -203,10 +182,18 @@
 
     async function fetchAndRender() {
       try {
-        const res = await fetch(JOKES_URL + '?t=' + Date.now());
+        const res = await fetch(MANIFEST_URL + '?t=' + Date.now());
         if (!res.ok) throw new Error(res.status);
-        const md = await res.text();
-        const jokes = parseJokes(md);
+        const files = await res.json();
+
+        const jokes = await Promise.all(
+          files.map(async file => {
+            const r = await fetch(file + '?t=' + Date.now());
+            return parseJokeMd(await r.text(), file);
+          })
+        );
+
+        jokes.reverse(); // nieuwste eerst
         document.getElementById('loading').style.display = 'none';
         renderJokes(jokes);
         document.getElementById('last-updated').textContent =
