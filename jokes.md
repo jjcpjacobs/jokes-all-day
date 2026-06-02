@@ -15,3 +15,9 @@ Omdat je dwars door ze heen kijkt.
 Een man loopt een bibliotheek in en vraagt: "Heeft u iets over paranoia?"
 De bibliothecaresse fluistert: "Ze zitten achter u..."
 
+## Mop #3 — 2 juni 2026, 00:02
+
+Ik heb mijn vrouw verteld dat ze haar wenkbrauwen te hoog had getekend.
+
+Ze keek verbaasd.
+
