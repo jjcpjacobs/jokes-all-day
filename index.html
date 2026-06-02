@@ -169,10 +169,11 @@
       empty.style.display = 'none';
 
       jokes.forEach((joke, i) => {
+        const n = jokes.length - i;
         const card = document.createElement('a');
         card.className = 'joke-card';
-        card.id = `joke-${jokes.length - i}`;
-        card.href = `#joke-${jokes.length - i}`;
+        card.id = `joke-${n}`;
+        card.href = `joke.html?file=jokes/mop-${n}.md`;
 
         const num = document.createElement('div');
         num.className = 'joke-number';

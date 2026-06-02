@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mop</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #fdf6ec;
+      color: #2d2d2d;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2.5rem 2.8rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      border-left: 5px solid #e07b00;
+      max-width: 600px;
+      width: 100%;
+    }
+    .card h1 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #e07b00;
+      margin-bottom: 1.2rem;
+    }
+    .setup {
+      font-size: 1.15rem;
+      line-height: 1.7;
+      margin-bottom: 1.2rem;
+      white-space: pre-line;
+    }
+    .punchline {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #e07b00;
+      line-height: 1.5;
+    }
+    .back {
+      margin-top: 2rem;
+      display: inline-block;
+      color: #e07b00;
+      text-decoration: none;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+    .back:hover { opacity: 1; text-decoration: underline; }
+    #error {
+      color: #aaa;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="content"></div>
+  <a class="back" href="index.html">← Alle moppen</a>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const file = params.get('file');
+
+    async function load() {
+      const el = document.getElementById('content');
+      if (!file) { el.innerHTML = '<p id="error">Geen mop opgegeven.</p>'; return; }
+
+      try {
+        const res = await fetch(file + '?t=' + Date.now());
+        if (!res.ok) throw new Error();
+        const md = await res.text();
+        const lines = md.trim().split('\n').map(l => l.trim()).filter(Boolean);
+
+        const heading = lines[0].replace(/^#+ /, '');
+        document.title = heading;
+
+        const body = lines.slice(1);
+        const punchline = body[body.length - 1];
+        const setup = body.slice(0, -1).join('\n');
+
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const h1 = document.createElement('h1');
+        h1.textContent = heading;
+
+        const s = document.createElement('p');
+        s.className = 'setup';
+        s.textContent = setup;
+
+        const p = document.createElement('p');
+        p.className = 'punchline';
+        p.textContent = punchline;
+
+        card.appendChild(h1);
+        if (setup) card.appendChild(s);
+        card.appendChild(p);
+        el.appendChild(card);
+      } catch {
+        el.innerHTML = '<p id="error">Mop niet gevonden.</p>';
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>
